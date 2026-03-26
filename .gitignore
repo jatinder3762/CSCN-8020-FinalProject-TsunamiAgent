@@ -1,0 +1,20 @@
+﻿__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+.env
+.ipynb_checkpoints/
+
+# Local Git safety override file created in this workspace
+.gitconfig
+
+# Keep output directories but ignore generated runtime files
+outputs/logs/*
+!outputs/logs/.gitkeep
+outputs/models/*
+!outputs/models/.gitkeep
+outputs/plots/*
+!outputs/plots/.gitkeep
