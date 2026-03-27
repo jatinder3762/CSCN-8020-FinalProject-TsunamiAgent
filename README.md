@@ -1,222 +1,254 @@
 # RL-Based Tsunami Alert Decision System
 
-A class-based Python reinforcement learning project for tsunami alert decisions, paired with a cleaner Streamlit presentation layer for scenario walkthroughs and live training.
+This project demonstrates how reinforcement learning can support tsunami alert decision-making. It combines a Q-learning environment with a Streamlit dashboard so you can both train the agent and present decision scenarios in a clear, step-by-step format.
 
-## Primary Demo
+The project is designed for two main use cases:
 
-The recommended presentation flow is:
+- interactive presentation of tsunami decision scenarios through Streamlit
+- local experimentation with training and evaluating a Q-learning policy
+
+## What The Project Does
+
+The system models tsunami warning decisions using a compact state made from:
+
+- `Magnitude`
+- `Depth`
+- `WaveRisk`
+- `Confidence`
+- `Time`
+
+At each step, the agent chooses one of four actions:
+
+- `Wait`
+- `Verify`
+- `Regional Alert`
+- `Full Alert`
+
+The goal is to balance caution and speed:
+
+- issue strong alerts when risk is high and confidence is strong
+- avoid false alarms when the signal is weak or misleading
+- reduce delayed warnings and missed alerts
+
+## Main Experience
+
+The easiest way to explore the project is the Streamlit dashboard:
 
 ```bash
 streamlit run app.py
 ```
 
-This dashboard runs well in VS Code and does not require GIF or video output.
+The dashboard includes:
 
-## Professionalized Project Layout
-
-The working RL engine stays intact, while the dashboard layer is now organized under a dedicated presentation package:
-
-```text
-FinalProject-TsunamiDSS/
-├── app.py
-├── config.py
-├── main.py
-├── run_training.py
-├── run_evaluation.py
-├── run_simulation.py
-├── outputs/
-├── src/
-│   ├── agent.py
-│   ├── environment.py
-│   ├── evaluator.py
-│   ├── plotting.py
-│   ├── simulator.py
-│   ├── trainer.py
-│   ├── utils.py
-│   ├── presentation/
-│   │   ├── __init__.py
-│   │   ├── dashboard_app.py
-│   │   ├── controller.py
-│   │   ├── components.py
-│   │   ├── charts.py
-│   │   ├── models.py
-│   │   └── scenarios.py
-│   ├── dashboard.py
-│   ├── app_controller.py
-│   ├── components.py
-│   ├── data_models.py
-│   └── scenario_generator.py
-└── tests/
-    ├── test_environment.py
-    └── test_app_logic.py
-```
-
-The root-level `src/dashboard.py`, `src/app_controller.py`, `src/components.py`, `src/data_models.py`, and `src/scenario_generator.py` remain as light compatibility wrappers so the working app keeps behaving the same way while the internal structure becomes cleaner.
-
-## Dashboard Features
-
-The dashboard provides:
-
-- a sidebar scenario selector
-- a scenario summary in the sidebar
-- a step slider for instant navigation
-- `Previous`, `Next`, `Auto Run`, and `Reset` controls
-- current state cards for `Magnitude`, `Depth`, `WaveRisk`, `Confidence`, and `Time`
-- selected action display
-- reward panel
-- per-step explanation text
-- decision history table
-- progress tracker
+- named demo scenarios
+- step-by-step navigation with `Previous`, `Next`, `Auto Run`, and a slider
+- current state cards
+- selected action and reward panels
+- explanation text for each decision
+- decision history
+- progress tracking
 - final outcome summary
-- reward trajectory chart
-- signal profile chart
-- action mix chart
+- visual charts for reward trend, signal profile, and action mix
 
-## Included Demo Scenarios
+## Demo Scenarios
+
+The dashboard includes deterministic scenarios for presentation and review:
 
 - `High-Risk Confirmed Tsunami`
 - `Uncertain Moderate-Risk Case`
 - `False Alarm Case`
 - `Delayed Response Case`
 
-Each scenario is deterministic and presentation-friendly so the dashboard is easy to demonstrate.
+These scenarios are useful for explaining how the system reacts under different levels of risk and confidence.
 
-## Sidebar Controls
+## Local Setup
 
-The sidebar includes:
+### 1. Prerequisites
 
-- `View`: switch between `Scenario Demo` and `Live Training`
-- `Scenario Selector`: switches between named deterministic scenarios
-- scenario summary details: risk level, step count, outcome, and total reward
-- short usage guidance for reading the dashboard
+Install the following first:
 
-## Step Navigation
+- Python 3.10 or newer
+- `pip`
+- Git
 
-Use the main navigation controls to inspect the scenario:
+If you are using VS Code, it is recommended to also install:
 
-- `Previous`: move one step backward
-- `Next`: move one step forward
-- `Auto Run`: play the currently selected scenario to its final result
-- `Reset`: return to the first step
-- `Step Slider`: jump directly to any step in the selected scenario
+- Python extension
+- Jupyter extension if you want to open notebooks
 
-Changing the slider updates the dashboard immediately.
+### 2. Clone The Repository
 
-## Dashboard Panels
+```bash
+git clone https://github.com/jatinder3762/CSCN-8020-FinalProject-TsunamiAgent.git
+cd CSCN-8020-FinalProject-TsunamiAgent
+```
 
-The main dashboard layout includes:
+If your local folder name is different, just `cd` into that project folder instead.
 
-- `Current State`: metric cards for the active state fields
-- `Selected Action`: the action chosen at the current step
-- `Reward`: step reward and cumulative reward
-- `Explanation`: short reasoning text for the current step
-- `Progress Tracker`: current position in the scenario
-- `Decision History`: a growing table of decisions through the selected step
-- `Final Outcome Summary`: projected or final scenario result
-- `Reward Trajectory`: line chart of step and cumulative reward
-- `Signal Profile`: bar chart of current warning-signal strength
-- `Action Mix`: bar chart showing which decisions have been taken so far
+### 3. Create A Virtual Environment
 
-## RL Core
+On Windows PowerShell:
 
-The reinforcement learning project still includes:
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
 
-- `main.py`
-- `run_training.py`
-- `run_evaluation.py`
-- `config.py`
-- `src/environment.py`
-- `src/agent.py`
-- `src/trainer.py`
-- `src/evaluator.py`
+On Windows Command Prompt:
 
-The RL setup uses:
+```bat
+python -m venv .venv
+.venv\Scripts\activate
+```
 
-- **State**: `(Magnitude, Depth, WaveRisk, Confidence, Time)`
-- **Actions**:
-  - `Wait`
-  - `Verify`
-  - `Regional Alert`
-  - `Full Alert`
+On macOS or Linux:
 
-## Setup
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-1. Create and activate a Python virtual environment.
-2. Install dependencies:
+### 4. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Training
+### 5. Verify The Setup
 
-Train the Q-learning agent with:
-
-```bash
-python run_training.py --episodes 2500 --seed 42
-```
-
-Training outputs include:
-
-- `outputs/models/q_table.npy`
-- `outputs/models/q_table_metadata.json`
-- `outputs/logs/training_history.csv`
-- `outputs/logs/training_summary.json`
-- `outputs/logs/best_episode_trace.json`
-
-## Evaluation
-
-Evaluate the trained model with:
-
-```bash
-python run_evaluation.py --episodes 400 --seed 42
-```
-
-Evaluation outputs include:
-
-- `outputs/logs/evaluation_history.csv`
-- `outputs/logs/evaluation_summary.json`
-
-## Combined CLI Entry Point
-
-Run training, evaluation, or both using:
-
-```bash
-python main.py --mode both --train-episodes 2500 --eval-episodes 400 --seed 42
-```
-
-Modes:
-
-- `--mode train`
-- `--mode evaluate`
-- `--mode both`
-
-## Optional Launcher
-
-If you want the project to open the browser automatically on port `8501`, you can still use:
-
-```bash
-python start_dashboard.py
-```
-
-This launcher starts the primary Streamlit app through `app.py`.
-
-## Notes On Simulation Files
-
-The repository still contains simulation scripts such as `run_simulation.py` and `src/simulator.py`, but GIF or video output is not required for the dashboard presentation flow.
-
-## Tests
-
-Run the test suite with:
+Run the tests:
 
 ```bash
 pytest -q
 ```
 
-The test suite covers:
+If the environment is set up correctly, the test suite should pass.
 
-- environment sanity checks
-- deterministic scenario generation
-- controller navigation logic
-- scenario selection behavior
-- presentation package imports
+## Running The Project Locally
+
+### Streamlit Dashboard
+
+Start the main dashboard:
+
+```bash
+streamlit run app.py
+```
+
+This is the primary demo command.
+
+If you prefer the helper launcher:
+
+```bash
+python start_dashboard.py
+```
+
+### Train The Agent
+
+Run a local training session:
+
+```bash
+python run_training.py --episodes 2500 --seed 42
+```
+
+This trains the Q-learning agent and writes outputs such as the learned Q-table and training logs.
+
+### Evaluate A Trained Agent
+
+Evaluate the saved model:
+
+```bash
+python run_evaluation.py --episodes 400 --seed 42
+```
+
+You can also provide a specific model path:
+
+```bash
+python run_evaluation.py --episodes 400 --seed 42 --model-path outputs/models/q_table.npy
+```
+
+### Run Training And Evaluation Together
+
+```bash
+python main.py --mode both --train-episodes 2500 --eval-episodes 400 --seed 42
+```
+
+You can also run only one mode:
+
+```bash
+python main.py --mode train --train-episodes 2500 --seed 42
+python main.py --mode evaluate --eval-episodes 400 --seed 42
+```
+
+## Using The Dashboard
+
+When the dashboard opens:
+
+1. Select `Scenario Demo` to walk through predefined tsunami cases.
+2. Choose a scenario from the sidebar.
+3. Move through the episode using:
+   - `Previous`
+   - `Next`
+   - `Auto Run`
+   - `Reset`
+   - `Step Slider`
+4. Review the explanation and visual panels as the scenario evolves.
+
+You can also switch to `Live Training` from the sidebar to watch the RL agent train inside Streamlit.
+
+## Output Files
+
+After training or evaluation, the project writes outputs under `outputs/`, including:
+
+- trained Q-table files
+- logs and summaries
+- live training session CSV output
+
+Typical locations include:
+
+- `outputs/models/q_table.npy`
+- `outputs/logs/`
+
+## Notes
+
+- The Streamlit dashboard is the main presentation interface.
+- GIF or video output is not required to use or present this project.
+- Simulation-related scripts may still exist in the repository, but the dashboard and RL workflow do not depend on video generation.
+
+## Troubleshooting
+
+### `streamlit` command not found
+
+Activate your virtual environment first, then run:
+
+```bash
+pip install -r requirements.txt
+```
+
+You can also try:
+
+```bash
+python -m streamlit run app.py
+```
+
+### Tests fail because packages are missing
+
+Make sure the virtual environment is active and reinstall dependencies:
+
+```bash
+pip install -r requirements.txt
+pytest -q
+```
+
+### Model file not found during evaluation
+
+Run training first:
+
+```bash
+python run_training.py --episodes 2500 --seed 42
+```
+
+Then run evaluation again.
+
+## Summary
+
+This project is a local, ready-to-run tsunami decision support demo that shows how reinforcement learning can be used to explore alert strategies. The Streamlit dashboard makes the results easier to present, while the CLI scripts make it easy to train and evaluate the model on your own machine.
