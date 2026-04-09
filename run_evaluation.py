@@ -60,7 +60,26 @@ class EvaluationRunner:
 
         summary = evaluator.evaluate(episodes=args.episodes)
         print("Evaluation completed.")
+        self._print_mdp_details(summary)
         print(json.dumps(summary, indent=2))
+
+    def _print_mdp_details(self, summary: dict[str, object]) -> None:
+        """Prints a concise MDP parameter view for easy presentation."""
+        mdp = summary.get("mdp_parameters")
+        if not isinstance(mdp, dict):
+            return
+
+        print("\nMDP Details:")
+        print(f"- alpha: {mdp.get('alpha')}")
+        print(f"- gamma: {mdp.get('gamma')}")
+        print(f"- state_space_size: {mdp.get('state_space_size')}")
+        print(f"- action_space_size: {mdp.get('action_space_size')}")
+
+        rewards = mdp.get("reward_inputs")
+        if isinstance(rewards, dict):
+            print("- reward_inputs:")
+            for name, value in rewards.items():
+                print(f"  - {name}: {value}")
 
 
 if __name__ == "__main__":

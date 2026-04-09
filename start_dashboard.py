@@ -1,14 +1,15 @@
-﻿"""Single-command launcher for Streamlit dashboard on a fixed port.
+"""Single-command launcher for Streamlit dashboard with configurable port.
 
 Behavior:
-- Always target port 8501.
-- If the port is occupied, terminate occupying process(es).
+- Default to port 8501 unless overridden by CLI args.
+- If the target port is occupied, terminate occupying process(es).
 - Start Streamlit app.
 - Open browser automatically.
 """
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import socket
@@ -19,10 +20,29 @@ import webbrowser
 from pathlib import Path
 
 
-PORT = 8501
-HOST = "127.0.0.1"
-URL = f"http://{HOST}:{PORT}"
+DEFAULT_PORT = 8501
+DEFAULT_HOST = "127.0.0.1"
 PROJECT_ROOT = Path(__file__).resolve().parent
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Creates CLI arguments for custom host and port."""
+    parser = argparse.ArgumentParser(
+        description="Launch Streamlit dashboard with optional custom host/port."
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help="Dashboard port (default: 8501).",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default=DEFAULT_HOST,
+        help="Dashboard host/address (default: 127.0.0.1).",
+    )
+    return parser
 
 
 def _find_pids_on_port(port: int) -> set[int]:
@@ -54,7 +74,12 @@ def _find_pids_on_port(port: int) -> set[int]:
 
 def _kill_pid(pid: int) -> None:
     """Force-kills a PID on Windows."""
-    subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, text=True, check=False)
+    subprocess.run(
+        ["taskkill", "/PID", str(pid), "/T", "/F"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 def _is_port_open(host: str, port: int) -> bool:
@@ -88,12 +113,17 @@ def _clear_port(port: int, retries: int = 6) -> bool:
 
 
 def main() -> int:
-    """Launches Streamlit dashboard with fixed-port behavior."""
-    print(f"Preparing dashboard on {URL}")
+    """Launches Streamlit dashboard with configurable host/port behavior."""
+    args = _build_parser().parse_args()
+    host = str(args.host)
+    port = int(args.port)
+    url = f"http://{host}:{port}"
 
-    if not _clear_port(PORT):
+    print(f"Preparing dashboard on {url}")
+
+    if not _clear_port(port):
         print(
-            f"Unable to free port {PORT}. Close the process using this port and rerun "
+            f"Unable to free port {port}. Close the process using this port and rerun "
             "or run terminal as Administrator."
         )
         return 1
@@ -105,15 +135,15 @@ def main() -> int:
         "run",
         "app.py",
         "--server.address",
-        HOST,
+        host,
         "--server.port",
-        str(PORT),
+        str(port),
     ]
     process = subprocess.Popen(cmd, cwd=PROJECT_ROOT)
 
-    if _wait_for_port(HOST, PORT):
-        print(f"Dashboard is running at {URL}")
-        webbrowser.open(URL)
+    if _wait_for_port(host, port):
+        print(f"Dashboard is running at {url}")
+        webbrowser.open(url)
     else:
         print("Dashboard did not open in time. Check terminal logs.")
 
