@@ -92,7 +92,11 @@ class TsunamiCinematicSimulator:
 
         while not done:
             current_state = self.environment.index_to_state(state_idx)
-            action = self.agent.choose_action(state_idx, training=False)
+            action = self.agent.choose_action(
+                state_idx=state_idx,
+                training=False,
+                valid_actions=self.environment.get_valid_actions(),
+            )
             next_state_idx, reward, done, info = self.environment.step(action)
             next_state = self.environment.index_to_state(next_state_idx)
 
@@ -438,27 +442,31 @@ class TsunamiCinematicSimulator:
     @staticmethod
     def _build_alert_banner(action_text: str, progress: float, risk_level: str) -> str:
         """Generates animated alert banner text."""
-        if action_text in ("Regional Alert", "Full Alert"):
+        if action_text in ("Regional Alert", "Full Alert", "Watch / Advisory", "Warning"):
             flash = " !!!" if progress > 0.45 else ""
             return f"{action_text.upper()}{flash}"
-        if action_text == "Verify":
+        if action_text in ("Verify",):
             return f"VERIFYING SIGNALS ({risk_level.upper()} RISK)"
-        if action_text == "Wait":
+        if action_text in ("Wait", "Hold / Monitor"):
             return "MONITORING WAVE DATA"
+        if action_text == "Cancel Alert":
+            return "ALERT CANCELLED"
         return "SEISMIC EVENT DETECTED"
 
     @staticmethod
     def _alert_banner_color(action_text: str) -> str:
         """Returns color code by action severity."""
         normalized = action_text.strip().lower()
-        if normalized == "full alert":
+        if normalized in ("full alert", "warning"):
             return "#ff595e"
-        if normalized == "regional alert":
+        if normalized in ("regional alert", "watch / advisory"):
             return "#ffca3a"
         if normalized == "verify":
             return "#8ac926"
-        if normalized == "wait":
+        if normalized in ("wait", "hold / monitor"):
             return "#90e0ef"
+        if normalized == "cancel alert":
+            return "#f4a261"
         return "#ffd166"
 
     def _build_hud_text(

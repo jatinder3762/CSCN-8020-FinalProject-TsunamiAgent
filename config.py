@@ -29,19 +29,34 @@ class ProjectConfig:
         self.depth_levels = ("Deep", "Moderate", "Shallow")
         self.wave_risk_levels = ("Low", "Medium", "High")
         self.confidence_levels = ("Low", "Medium", "High")
-        self.time_levels = ("Early", "Mid", "Late")
+        # Front-loaded operational horizon (dense early minutes, then wider spacing).
+        self.time_levels = (
+            "0m",
+            "2m",
+            "5m",
+            "8m",
+            "12m",
+            "16m",
+            "20m",
+            "25m",
+            "30m",
+            "40m",
+            "50m",
+            "60m",
+        )
         self.risk_levels = ("Low", "Medium", "High")
 
+        # Safety-oriented operational action set.
         self.action_names = {
-            0: "Wait",
-            1: "Verify",
-            2: "Regional Alert",
-            3: "Full Alert",
+            0: "Hold / Monitor",
+            1: "Watch / Advisory",
+            2: "Warning",
+            3: "Cancel Alert",
         }
 
         self.training_episodes = int(training_episodes)
         self.evaluation_episodes = int(evaluation_episodes)
-        self.max_steps_per_episode = 3
+        self.max_steps_per_episode = len(self.time_levels)
         self.alpha = float(alpha)
         self.gamma = float(gamma)
         self.epsilon = float(epsilon)
@@ -62,6 +77,23 @@ class ProjectConfig:
         self.reward_partial_regional_on_high = 25.0
         self.penalty_overreaction_full_on_medium = -20.0
         self.reward_safe_no_alert_low_risk = 10.0
+
+        # Operational reward decomposition (slide-aligned shaping terms).
+        self.base_step_cost = -0.1
+        self.penalty_invalid_action = -120.0
+        self.penalty_churn = -4.0
+        self.penalty_ignore_evidence = -35.0
+        self.penalty_overreact_warning = -25.0
+        self.penalty_risky_cancel = -40.0
+
+        # Terminal asymmetry terms.
+        self.terminal_miss_penalty = -250.0
+        self.terminal_warning_base = 140.0
+        self.terminal_warning_decay_per_step = 12.0
+        self.terminal_warning_floor = 40.0
+        self.reward_safe_resolution = 20.0
+        self.penalty_false_warning_terminal = -45.0
+        self.penalty_false_watch_terminal = -15.0
 
         self.moving_average_window = 50
 
@@ -127,6 +159,19 @@ class ProjectConfig:
                 "reward_partial_regional_on_high": self.reward_partial_regional_on_high,
                 "penalty_overreaction_full_on_medium": self.penalty_overreaction_full_on_medium,
                 "reward_safe_no_alert_low_risk": self.reward_safe_no_alert_low_risk,
+                "base_step_cost": self.base_step_cost,
+                "penalty_invalid_action": self.penalty_invalid_action,
+                "penalty_churn": self.penalty_churn,
+                "penalty_ignore_evidence": self.penalty_ignore_evidence,
+                "penalty_overreact_warning": self.penalty_overreact_warning,
+                "penalty_risky_cancel": self.penalty_risky_cancel,
+                "terminal_miss_penalty": self.terminal_miss_penalty,
+                "terminal_warning_base": self.terminal_warning_base,
+                "terminal_warning_decay_per_step": self.terminal_warning_decay_per_step,
+                "terminal_warning_floor": self.terminal_warning_floor,
+                "reward_safe_resolution": self.reward_safe_resolution,
+                "penalty_false_warning_terminal": self.penalty_false_warning_terminal,
+                "penalty_false_watch_terminal": self.penalty_false_watch_terminal,
             },
             "paths": {
                 "base_dir": str(self.base_dir),

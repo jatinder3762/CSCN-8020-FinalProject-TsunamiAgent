@@ -57,7 +57,11 @@ class Trainer:
 
         while not done and steps < self.config.max_steps_per_episode:
             state_tuple = self.environment.index_to_state(state_idx)
-            action = self.agent.choose_action(state_idx=state_idx, training=True)
+            action = self.agent.choose_action(
+                state_idx=state_idx,
+                training=True,
+                valid_actions=self.environment.get_valid_actions(),
+            )
             next_state_idx, reward, done, info = self.environment.step(action)
 
             self.agent.update(state_idx, action, reward, next_state_idx, done)

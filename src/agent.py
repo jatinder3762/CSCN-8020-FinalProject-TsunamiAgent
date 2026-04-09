@@ -33,14 +33,25 @@ class QLearningAgent:
         self.rng = np.random.default_rng(seed)
         self.q_table = np.zeros((state_size, action_size), dtype=np.float64)
 
-    def choose_action(self, state_idx: int, training: bool = True) -> int:
-        """Chooses an action by epsilon-greedy policy."""
+    def choose_action(
+        self,
+        state_idx: int,
+        training: bool = True,
+        valid_actions: list[int] | tuple[int, ...] | None = None,
+    ) -> int:
+        """Chooses an action by epsilon-greedy policy over valid actions."""
+        action_pool = list(valid_actions) if valid_actions is not None else list(range(self.action_size))
+        if not action_pool:
+            raise ValueError("valid_actions cannot be empty.")
+
         if training and self.rng.random() < self.epsilon:
-            return int(self.rng.integers(0, self.action_size))
+            return int(self.rng.choice(action_pool))
 
         q_values = self.q_table[state_idx]
-        max_value = np.max(q_values)
-        best_actions = np.flatnonzero(np.isclose(q_values, max_value))
+        candidate_values = np.array([q_values[action] for action in action_pool], dtype=np.float64)
+        max_value = float(np.max(candidate_values))
+        best_indices = np.flatnonzero(np.isclose(candidate_values, max_value))
+        best_actions = [action_pool[index] for index in best_indices]
         return int(self.rng.choice(best_actions))
 
     def update(self, state_idx: int, action: int, reward: float, next_state_idx: int, done: bool) -> None:

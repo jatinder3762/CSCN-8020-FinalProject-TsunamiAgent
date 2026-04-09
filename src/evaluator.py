@@ -47,7 +47,11 @@ class Evaluator:
         final_info: dict[str, Any] = {}
 
         while not done and steps < self.config.max_steps_per_episode:
-            action = self.agent.choose_action(state_idx=state_idx, training=False)
+            action = self.agent.choose_action(
+                state_idx=state_idx,
+                training=False,
+                valid_actions=self.environment.get_valid_actions(),
+            )
             next_state_idx, reward, done, info = self.environment.step(action)
 
             self.action_counts[action] += 1
@@ -87,6 +91,30 @@ class Evaluator:
             "missed_alert_rate": MathUtils.safe_rate(missed_count, episode_count),
             "action_distribution": {
                 self.config.action_names[action]: count for action, count in self.action_counts.items()
+            },
+            "mdp_parameters": {
+                "mdp_tuple": "M = (S, A, P, R, gamma)",
+                "q_learning_update": (
+                    "Q(s_t,a_t) <- Q(s_t,a_t) + alpha * [r_t + gamma * max_a' Q(s_(t+1),a') - Q(s_t,a_t)]"
+                ),
+                "alpha": self.config.alpha,
+                "gamma": self.config.gamma,
+                "state_space_size": self.config.state_size,
+                "action_space_size": self.config.action_size,
+                "reward_inputs": {
+                    "reward_correct_full_alert": self.config.reward_correct_full_alert,
+                    "reward_correct_regional_alert": self.config.reward_correct_regional_alert,
+                    "reward_smart_verify": self.config.reward_smart_verify,
+                    "penalty_missed_dangerous_alert": self.config.penalty_missed_dangerous_alert,
+                    "penalty_false_full_alert": self.config.penalty_false_full_alert,
+                    "penalty_false_regional_alert": self.config.penalty_false_regional_alert,
+                    "reward_delay_per_step": self.config.reward_delay_per_step,
+                    "penalty_unnecessary_verify": self.config.penalty_unnecessary_verify,
+                    "penalty_late_wait_in_risk": self.config.penalty_late_wait_in_risk,
+                    "reward_partial_regional_on_high": self.config.reward_partial_regional_on_high,
+                    "penalty_overreaction_full_on_medium": self.config.penalty_overreaction_full_on_medium,
+                    "reward_safe_no_alert_low_risk": self.config.reward_safe_no_alert_low_risk,
+                },
             },
         }
 
