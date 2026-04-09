@@ -12,6 +12,7 @@ import streamlit as st
 
 from config import ProjectConfig
 from src.agent import QLearningAgent
+from src.core import RuntimeFactory
 from src.environment import TsunamiAlertEnvironment
 from src.presentation.charts import DashboardCharts
 from src.presentation.components import DashboardComponents
@@ -520,17 +521,12 @@ class TsunamiDashboardApp:
                 st.json(st.session_state[self.training_summary_key])
             return
 
-        env = TsunamiAlertEnvironment(cfg, seed=cfg.random_seed)
-        agent = QLearningAgent(
-            cfg.state_size,
-            cfg.action_size,
-            cfg.alpha,
-            cfg.gamma,
-            cfg.epsilon,
-            cfg.epsilon_decay,
-            cfg.min_epsilon,
-            cfg.random_seed,
+        runtime = RuntimeFactory.build_training_bundle(
+            training_episodes=cfg.training_episodes,
+            seed=cfg.random_seed,
         )
+        env = runtime.environment
+        agent = runtime.agent
 
         refresh = max(10, cfg.training_episodes // 60)
 

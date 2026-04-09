@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
+from pathlib import Path
 
-from config import ProjectConfig
-from src.agent import QLearningAgent
-from src.environment import TsunamiAlertEnvironment
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.core import RuntimeFactory
 from src.trainer import Trainer
 from src.utils import SeedManager
 
@@ -29,21 +34,9 @@ class TrainingRunner:
     def run(self) -> None:
         """Runs the training pipeline."""
         args = self.parser.parse_args()
-        config = ProjectConfig(training_episodes=args.episodes, random_seed=args.seed)
-        SeedManager.set_seed(config.random_seed)
-
-        environment = TsunamiAlertEnvironment(config=config, seed=config.random_seed)
-        agent = QLearningAgent(
-            state_size=config.state_size,
-            action_size=config.action_size,
-            alpha=config.alpha,
-            gamma=config.gamma,
-            epsilon=config.epsilon,
-            epsilon_decay=config.epsilon_decay,
-            min_epsilon=config.min_epsilon,
-            seed=config.random_seed,
-        )
-        trainer = Trainer(config=config, environment=environment, agent=agent)
+        runtime = RuntimeFactory.build_training_bundle(training_episodes=args.episodes, seed=args.seed)
+        SeedManager.set_seed(runtime.config.random_seed)
+        trainer = Trainer(config=runtime.config, environment=runtime.environment, agent=runtime.agent)
 
         summary = trainer.train()
         print("Training completed.")

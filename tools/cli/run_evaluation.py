@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from config import ProjectConfig
-from src.agent import QLearningAgent
-from src.environment import TsunamiAlertEnvironment
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.core import RuntimeFactory
 from src.evaluator import Evaluator
 from src.utils import SeedManager
 
@@ -36,27 +40,15 @@ class EvaluationRunner:
     def run(self) -> None:
         """Runs evaluation with a saved Q-table."""
         args = self.parser.parse_args()
-        config = ProjectConfig(evaluation_episodes=args.episodes, random_seed=args.seed)
-        SeedManager.set_seed(config.random_seed)
+        runtime = RuntimeFactory.build_evaluation_bundle(evaluation_episodes=args.episodes, seed=args.seed)
+        SeedManager.set_seed(runtime.config.random_seed)
 
-        environment = TsunamiAlertEnvironment(config=config, seed=config.random_seed)
-        agent = QLearningAgent(
-            state_size=config.state_size,
-            action_size=config.action_size,
-            alpha=config.alpha,
-            gamma=config.gamma,
-            epsilon=0.0,
-            epsilon_decay=1.0,
-            min_epsilon=0.0,
-            seed=config.random_seed,
-        )
-
-        model_path = Path(args.model_path).resolve() if args.model_path else (config.models_dir / "q_table.npy")
+        model_path = Path(args.model_path).resolve() if args.model_path else (runtime.config.models_dir / "q_table.npy")
         if not model_path.exists():
             raise FileNotFoundError(f"Model file not found: {model_path}")
 
-        agent.load_q_table(model_path)
-        evaluator = Evaluator(config=config, environment=environment, agent=agent)
+        runtime.agent.load_q_table(model_path)
+        evaluator = Evaluator(config=runtime.config, environment=runtime.environment, agent=runtime.agent)
 
         summary = evaluator.evaluate(episodes=args.episodes)
         print("Evaluation completed.")

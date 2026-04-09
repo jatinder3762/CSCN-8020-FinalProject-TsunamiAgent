@@ -35,7 +35,7 @@ The goal is to balance caution and speed:
 The easiest way to explore the project is the Streamlit dashboard:
 
 ```bash
-streamlit run app.py
+streamlit run app.py --server.address 127.0.0.1 --server.port 8502
 ```
 
 The dashboard includes:
@@ -60,6 +60,19 @@ The dashboard includes deterministic scenarios for presentation and review:
 - `Delayed Response Case`
 
 These scenarios are useful for explaining how the system reacts under different levels of risk and confidence.
+
+## Current Project Structure
+
+The repository now keeps root files minimal and groups runnable scripts under `tools/`:
+
+- `app.py`: main Streamlit entrypoint.
+- `src/`: RL environment, agent, trainer/evaluator, and dashboard code.
+- `src/core/`: shared runtime factory + protocol interfaces for extensibility.
+- `tools/cli/`: training/evaluation/simulation command-line scripts.
+- `tools/launch/`: dashboard launch helpers.
+- `tools/apps/`: optional standalone Streamlit demos.
+- `tests/`: automated tests.
+- `docs/ARCHITECTURE.md`: extension and OOP design guide.
 
 ## Installation For Other Users
 
@@ -126,21 +139,30 @@ pytest -q
 
 If setup is correct, tests should pass.
 
+Recommended quick validation of entrypoints:
+
+```bash
+python tools/cli/run_training.py --help
+python tools/cli/run_evaluation.py --help
+python tools/cli/main.py --help
+python tools/launch/start_dashboard.py --help
+```
+
 ### 6. Quick Start (For Demo/Review)
 
 Run the dashboard:
 
 ```bash
-streamlit run app.py
+streamlit run app.py --server.address 127.0.0.1 --server.port 8502
 ```
 
-If port `8501` is busy, run:
+If `8502` is busy, run:
 
 ```bash
-python start_dashboard.py --port 8502
+python tools/launch/start_dashboard.py --port 8503
 ```
 
-Then open the URL shown in terminal (for example `http://localhost:8502`).
+Then open the URL shown in terminal (for example `http://localhost:8503`).
 
 ## Running The Project Locally
 
@@ -149,21 +171,28 @@ Then open the URL shown in terminal (for example `http://localhost:8502`).
 Start the main dashboard:
 
 ```bash
-streamlit run app.py
+streamlit run app.py --server.address 127.0.0.1 --server.port 8502
 ```
 
 This is the primary demo command.
+The repo includes `.streamlit/config.toml`, so the default project port is `8502`.
 
 If you prefer the helper launcher:
 
 ```bash
-python start_dashboard.py
+python tools/launch/start_dashboard.py
 ```
 
-Run on a different port (for example when `8501` is already in use):
+Run on a different port (for example when `8502` is already in use):
 
 ```bash
-python start_dashboard.py --port 8502
+python tools/launch/start_dashboard.py --port 8503
+```
+
+Windows batch launcher:
+
+```bat
+tools\launch\start_streamlit.bat
 ```
 
 ### Standalone MDP Visual Simulator
@@ -171,21 +200,7 @@ python start_dashboard.py --port 8502
 Run the proposal-style interactive MDP visualizer:
 
 ```bash
-streamlit run mdp_visualizer_app.py
-```
-
-### Run Both Dashboards At The Same Time
-
-Run the main dashboard and MDP visualizer together on different ports:
-
-```bash
-python start_dual_dashboards.py --main-port 8502 --visualizer-port 8503
-```
-
-Batch launcher equivalent (Windows):
-
-```bat
-start_dual_streamlit.bat --main-port 8502 --visualizer-port 8503
+streamlit run tools/apps/mdp_visualizer_app.py
 ```
 
 ### Train The Agent
@@ -193,7 +208,7 @@ start_dual_streamlit.bat --main-port 8502 --visualizer-port 8503
 Run a local training session:
 
 ```bash
-python run_training.py --episodes 2500 --seed 42
+python tools/cli/run_training.py --episodes 2500 --seed 42
 ```
 
 This trains the Q-learning agent and writes outputs such as the learned Q-table and training logs.
@@ -203,26 +218,26 @@ This trains the Q-learning agent and writes outputs such as the learned Q-table 
 Evaluate the saved model:
 
 ```bash
-python run_evaluation.py --episodes 400 --seed 42
+python tools/cli/run_evaluation.py --episodes 400 --seed 42
 ```
 
 You can also provide a specific model path:
 
 ```bash
-python run_evaluation.py --episodes 400 --seed 42 --model-path outputs/models/q_table.npy
+python tools/cli/run_evaluation.py --episodes 400 --seed 42 --model-path outputs/models/q_table.npy
 ```
 
 ### Run Training And Evaluation Together
 
 ```bash
-python main.py --mode both --train-episodes 2500 --eval-episodes 400 --seed 42
+python tools/cli/main.py --mode both --train-episodes 2500 --eval-episodes 400 --seed 42
 ```
 
 You can also run only one mode:
 
 ```bash
-python main.py --mode train --train-episodes 2500 --seed 42
-python main.py --mode evaluate --eval-episodes 400 --seed 42
+python tools/cli/main.py --mode train --train-episodes 2500 --seed 42
+python tools/cli/main.py --mode evaluate --eval-episodes 400 --seed 42
 ```
 
 ## Using The Dashboard
@@ -258,6 +273,7 @@ Typical locations include:
 - The Streamlit dashboard is the main presentation interface.
 - GIF or video output is not required to use or present this project.
 - Simulation-related scripts may still exist in the repository, but the dashboard and RL workflow do not depend on video generation.
+- For maintainable extension guidance, see `docs/ARCHITECTURE.md`.
 
 ## Troubleshooting
 
@@ -272,7 +288,7 @@ pip install -r requirements.txt
 You can also try:
 
 ```bash
-python -m streamlit run app.py
+python -m streamlit run app.py --server.address 127.0.0.1 --server.port 8502
 ```
 
 ### Tests fail because packages are missing
@@ -289,7 +305,7 @@ pytest -q
 Run training first:
 
 ```bash
-python run_training.py --episodes 2500 --seed 42
+python tools/cli/run_training.py --episodes 2500 --seed 42
 ```
 
 Then run evaluation again.

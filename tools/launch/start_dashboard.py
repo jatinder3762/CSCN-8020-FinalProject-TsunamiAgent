@@ -1,7 +1,7 @@
 """Single-command launcher for Streamlit dashboard with configurable port.
 
 Behavior:
-- Default to port 8501 unless overridden by CLI args.
+- Default to port 8502 unless overridden by CLI args.
 - If the target port is occupied, terminate occupying process(es).
 - Start Streamlit app.
 - Open browser automatically.
@@ -20,9 +20,9 @@ import webbrowser
 from pathlib import Path
 
 
-DEFAULT_PORT = 8501
+DEFAULT_PORT = 8502
 DEFAULT_HOST = "127.0.0.1"
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -34,7 +34,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--port",
         type=int,
         default=DEFAULT_PORT,
-        help="Dashboard port (default: 8501).",
+        help="Dashboard port (default: 8502).",
     )
     parser.add_argument(
         "--host",

@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
+from pathlib import Path
 
-from config import ProjectConfig
-from src.agent import QLearningAgent
-from src.environment import TsunamiAlertEnvironment
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.core import RuntimeFactory
 from src.evaluator import Evaluator
 from src.trainer import Trainer
 from src.utils import SeedManager
@@ -62,37 +67,15 @@ class Application:
 
     def _run_training(self, train_episodes: int, seed: int) -> dict:
         """Runs a fresh training session."""
-        config = ProjectConfig(training_episodes=train_episodes, random_seed=seed)
-        environment = TsunamiAlertEnvironment(config=config, seed=seed)
-        agent = QLearningAgent(
-            state_size=config.state_size,
-            action_size=config.action_size,
-            alpha=config.alpha,
-            gamma=config.gamma,
-            epsilon=config.epsilon,
-            epsilon_decay=config.epsilon_decay,
-            min_epsilon=config.min_epsilon,
-            seed=seed,
-        )
-        trainer = Trainer(config=config, environment=environment, agent=agent)
+        runtime = RuntimeFactory.build_training_bundle(training_episodes=train_episodes, seed=seed)
+        trainer = Trainer(config=runtime.config, environment=runtime.environment, agent=runtime.agent)
         return trainer.train()
 
     def _run_evaluation(self, eval_episodes: int, seed: int) -> dict:
         """Runs evaluation using saved model weights."""
-        config = ProjectConfig(evaluation_episodes=eval_episodes, random_seed=seed)
-        environment = TsunamiAlertEnvironment(config=config, seed=seed)
-        agent = QLearningAgent(
-            state_size=config.state_size,
-            action_size=config.action_size,
-            alpha=config.alpha,
-            gamma=config.gamma,
-            epsilon=0.0,
-            epsilon_decay=1.0,
-            min_epsilon=0.0,
-            seed=seed,
-        )
-        agent.load_q_table(config.models_dir / "q_table.npy")
-        evaluator = Evaluator(config=config, environment=environment, agent=agent)
+        runtime = RuntimeFactory.build_evaluation_bundle(evaluation_episodes=eval_episodes, seed=seed)
+        runtime.agent.load_q_table(runtime.config.models_dir / "q_table.npy")
+        evaluator = Evaluator(config=runtime.config, environment=runtime.environment, agent=runtime.agent)
         return evaluator.evaluate(episodes=eval_episodes)
 
 
