@@ -12,6 +12,7 @@ venv/
 .gitconfig
 
 # Keep output directories but ignore generated runtime files
+outputs/*.log
 outputs/logs/*
 !outputs/logs/.gitkeep
 outputs/models/*
