@@ -64,6 +64,10 @@ class ProjectConfig:
         self.min_epsilon = float(min_epsilon)
         self.random_seed = int(random_seed)
 
+        # Deployment-time safety gate: use RL action only when it clearly beats baseline policy.
+        self.use_safe_override = True
+        self.safe_override_delta = 8.0
+
         # Reward weights (configurable for experiments).
         self.reward_correct_full_alert = 100.0
         self.reward_correct_regional_alert = 60.0
@@ -143,6 +147,10 @@ class ProjectConfig:
             "epsilon_decay": self.epsilon_decay,
             "min_epsilon": self.min_epsilon,
             "random_seed": self.random_seed,
+            "deployment": {
+                "use_safe_override": self.use_safe_override,
+                "safe_override_delta": self.safe_override_delta,
+            },
             "state_shape": self.state_shape,
             "state_size": self.state_size,
             "action_size": self.action_size,

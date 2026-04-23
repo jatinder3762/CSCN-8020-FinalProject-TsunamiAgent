@@ -31,7 +31,7 @@ class DashboardCharts:
             return
 
         chart_frame = frame[["Step", "Reward", "Cumulative Reward"]].set_index("Step")
-        st.line_chart(chart_frame, use_container_width=True)
+        st.line_chart(chart_frame, width="stretch")
 
     @classmethod
     def render_signal_profile(cls, step: DecisionStep) -> None:
@@ -48,7 +48,7 @@ class DashboardCharts:
                 ],
             }
         ).set_index("Signal")
-        st.bar_chart(profile, use_container_width=True)
+        st.bar_chart(profile, width="stretch")
         st.caption("Higher bars indicate stronger warning signals or higher confidence.")
 
     @classmethod
@@ -66,5 +66,5 @@ class DashboardCharts:
                 "Count": list(action_counts.values()),
             }
         ).set_index("Action")
-        st.bar_chart(counts, use_container_width=True)
+        st.bar_chart(counts, width="stretch")
         st.caption("This view helps show how the policy escalates or delays over time.")

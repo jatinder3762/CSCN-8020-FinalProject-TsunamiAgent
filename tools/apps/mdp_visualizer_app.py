@@ -277,7 +277,7 @@ def main() -> None:
     ):
         _initialize_session_state(selected)
 
-    if st.sidebar.button("Reset Simulation", use_container_width=True):
+    if st.sidebar.button("Reset Simulation", width="stretch"):
         _initialize_session_state(selected)
 
     obs = _get_observation(scenarios)
@@ -310,13 +310,13 @@ def main() -> None:
         st.caption("Action space mapped to project semantics: Wait/Verify/Regional Alert/Full Alert.")
 
         action_taken: str | None = None
-        if st.button("Monitor (No Alert)", use_container_width=True, disabled=bool(st.session_state["episode_done"])):
+        if st.button("Monitor (No Alert)", width="stretch", disabled=bool(st.session_state["episode_done"])):
             action_taken = "Monitor (No Alert)"
-        if st.button("Issue Watch", use_container_width=True, disabled=bool(st.session_state["episode_done"])):
+        if st.button("Issue Watch", width="stretch", disabled=bool(st.session_state["episode_done"])):
             action_taken = "Issue Watch"
-        if st.button("Issue Warning", use_container_width=True, disabled=bool(st.session_state["episode_done"])):
+        if st.button("Issue Warning", width="stretch", disabled=bool(st.session_state["episode_done"])):
             action_taken = "Issue Warning"
-        if st.button("De-escalate/Cancel Alert", use_container_width=True, disabled=bool(st.session_state["episode_done"])):
+        if st.button("De-escalate/Cancel Alert", width="stretch", disabled=bool(st.session_state["episode_done"])):
             action_taken = "De-escalate/Cancel Alert"
 
         if action_taken is not None:
@@ -338,14 +338,14 @@ def main() -> None:
     st.subheader("Cumulative Return Over Episode")
     return_frame = pd.DataFrame(st.session_state["return_history"])
     if not return_frame.empty:
-        st.area_chart(return_frame.set_index("Step")[["Cumulative Return"]], use_container_width=True)
+        st.area_chart(return_frame.set_index("Step")[["Cumulative Return"]], width="stretch")
 
     st.subheader("Transition Log {time, state, action, reward, alert_level}")
     log_frame = pd.DataFrame(st.session_state["transition_log"])
     if log_frame.empty:
         st.info("No actions taken yet. Choose an alert action to start the episode.")
     else:
-        st.dataframe(log_frame, use_container_width=True, hide_index=True)
+        st.dataframe(log_frame, width="stretch", hide_index=True)
 
 
 if __name__ == "__main__":

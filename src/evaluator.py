@@ -7,6 +7,7 @@ from typing import Any
 from config import ProjectConfig
 from src.agent import QLearningAgent
 from src.environment import TsunamiAlertEnvironment
+from src.hybrid_policy import SafeHybridOverride
 from src.plotting import PlotManager
 from src.utils import MathUtils, OutputManager
 
@@ -23,12 +24,18 @@ class Evaluator:
 
         self.evaluation_records: list[dict[str, Any]] = []
         self.action_counts: dict[int, int] = {action: 0 for action in self.config.action_names}
+        self.override_count: int = 0
+        self.decision_count: int = 0
+        self.margin_sum: float = 0.0
 
     def evaluate(self, episodes: int | None = None) -> dict[str, Any]:
         """Runs greedy evaluation for the given number of episodes."""
         episode_count = episodes if episodes is not None else self.config.evaluation_episodes
         self.evaluation_records = []
         self.action_counts = {action: 0 for action in self.config.action_names}
+        self.override_count = 0
+        self.decision_count = 0
+        self.margin_sum = 0.0
 
         for episode in range(1, episode_count + 1):
             episode_record = self.run_greedy_episode(episode)
@@ -44,19 +51,37 @@ class Evaluator:
         done = False
         steps = 0
         total_reward = 0.0
+        override_steps = 0
         final_info: dict[str, Any] = {}
 
         while not done and steps < self.config.max_steps_per_episode:
-            action = self.agent.choose_action(
-                state_idx=state_idx,
-                training=False,
-                valid_actions=self.environment.get_valid_actions(),
-            )
+            valid_actions = self.environment.get_valid_actions()
+            if bool(self.config.use_safe_override):
+                state_tuple = self.environment.index_to_state(state_idx)
+                decision = SafeHybridOverride.select_action(
+                    state_idx=state_idx,
+                    state=state_tuple,
+                    current_alert_level=int(self.environment.current_alert_level),
+                    valid_actions=valid_actions,
+                    q_table=self.agent.q_table,
+                    delta=float(self.config.safe_override_delta),
+                )
+                action = decision.deployed_action
+                self.override_count += int(decision.used_override)
+                self.margin_sum += float(decision.margin)
+                override_steps += int(decision.used_override)
+            else:
+                action = self.agent.choose_action(
+                    state_idx=state_idx,
+                    training=False,
+                    valid_actions=valid_actions,
+                )
             next_state_idx, reward, done, info = self.environment.step(action)
 
             self.action_counts[action] += 1
             total_reward += reward
             steps += 1
+            self.decision_count += 1
             state_idx = next_state_idx
             final_info = info
 
@@ -64,6 +89,7 @@ class Evaluator:
             "episode": episode,
             "total_reward": total_reward,
             "steps": steps,
+            "override_steps": override_steps,
             "correct_alert": bool(final_info.get("alert_correct", False)),
             "false_alert": bool(final_info.get("false_alert", False)),
             "missed_alert": bool(final_info.get("missed_alert", False)),
@@ -89,6 +115,8 @@ class Evaluator:
             "correct_alert_rate": MathUtils.safe_rate(correct_count, episode_count),
             "false_alert_rate": MathUtils.safe_rate(false_count, episode_count),
             "missed_alert_rate": MathUtils.safe_rate(missed_count, episode_count),
+            "safe_override_rate": MathUtils.safe_rate(self.override_count, self.decision_count),
+            "average_margin": MathUtils.safe_rate(self.margin_sum, self.decision_count),
             "action_distribution": {
                 self.config.action_names[action]: count for action, count in self.action_counts.items()
             },
@@ -101,6 +129,13 @@ class Evaluator:
                 "gamma": self.config.gamma,
                 "state_space_size": self.config.state_size,
                 "action_space_size": self.config.action_size,
+                "deployment_policy": {
+                    "type": "safe_hybrid_override" if bool(self.config.use_safe_override) else "greedy_rl_only",
+                    "use_safe_override": bool(self.config.use_safe_override),
+                    "safe_override_delta": float(self.config.safe_override_delta),
+                    "override_steps": int(self.override_count),
+                    "decision_steps": int(self.decision_count),
+                },
                 "reward_inputs": {
                     "reward_correct_full_alert": self.config.reward_correct_full_alert,
                     "reward_correct_regional_alert": self.config.reward_correct_regional_alert,

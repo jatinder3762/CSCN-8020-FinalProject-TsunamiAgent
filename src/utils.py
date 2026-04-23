@@ -92,6 +92,11 @@ class OutputManager:
         frame.to_csv(path, index=False)
 
     @staticmethod
+    def timestamped_path(path: Path, timestamp: str) -> Path:
+        """Builds a timestamped sibling path while preserving file extension."""
+        return path.with_name(f"{path.stem}_{timestamp}{path.suffix}")
+
+    @staticmethod
     def save_json(data: dict[str, Any], path: Path) -> None:
         """Saves a dictionary to JSON file."""
         OutputManager.ensure_directory(path.parent)

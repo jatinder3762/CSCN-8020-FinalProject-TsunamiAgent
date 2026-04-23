@@ -30,6 +30,93 @@ The goal is to balance caution and speed:
 - avoid false alarms when the signal is weak or misleading
 - reduce delayed warnings and missed alerts
 
+## Presentation Quick Answers
+
+### 1. Which Method Is Used To Train The Model?
+
+- The project uses **tabular Q-learning** with **epsilon-greedy exploration**.
+- The agent keeps a **Q-table** where each entry estimates how good an action is for a given tsunami decision state.
+- During early training, the agent explores more often with random actions.
+- As training continues, `epsilon` decays, so the agent gradually relies more on the best learned actions.
+
+### 2. What Is The Model Learning?
+
+- The model is learning a **decision policy**, not a direct tsunami classification label.
+- It learns which action gives the best long-term outcome for the current observed state.
+- The observed state is built from:
+  - `Magnitude`
+  - `Depth`
+  - `WaveRisk`
+  - `Confidence`
+  - `Time`
+- The available actions are:
+  - `Hold / Monitor`
+  - `Watch / Advisory`
+  - `Warning`
+  - `Cancel Alert`
+- The reward design encourages:
+  - timely correct alerts
+  - lower false alarms
+  - fewer missed dangerous events
+  - less delay and unstable alert switching
+
+### 3. What Is An Episode In Training?
+
+- One episode is **one complete simulated tsunami scenario**.
+- It starts from an initial state at `0m` and ends when the timeline reaches `60m`.
+- In CLI training, the default is `2500` episodes.
+- In the live Streamlit training view, the default is `1200` episodes.
+- Each episode gives the agent a fresh scenario so it can improve its action values across many trials.
+
+### 4. Why Does Training Show 11 Steps?
+
+- The timeline contains 12 labels:
+  - `0m`, `2m`, `5m`, `8m`, `12m`, `16m`, `20m`, `25m`, `30m`, `40m`, `50m`, `60m`
+- The episode starts at `0m`, so that first label is the initial state, not a completed step.
+- Each action advances the simulation to the next time label.
+- That creates **11 decision transitions**:
+  1. `0m -> 2m`
+  2. `2m -> 5m`
+  3. `5m -> 8m`
+  4. `8m -> 12m`
+  5. `12m -> 16m`
+  6. `16m -> 20m`
+  7. `20m -> 25m`
+  8. `25m -> 30m`
+  9. `30m -> 40m`
+  10. `40m -> 50m`
+  11. `50m -> 60m`
+- At each step, the agent:
+  - observes the current state
+  - selects a valid action
+  - receives a reward
+  - moves to the next state
+  - updates the Q-table
+
+### 5. What Is Saved After Training?
+
+- The learned policy is saved as a Q-table in `outputs/models/q_table.npy`.
+- Training logs and summaries are written under `outputs/logs/`.
+- These outputs can be reused for evaluation, simulation, and presentation.
+
+## Deployment Safety Gate (Hybrid Override)
+
+For deployment-style inference, the project supports a safe hybrid override:
+
+- compute the RL recommendation `a_RL` and a hand-crafted baseline `a_rule`
+- compare margin `Q(s, a_RL) - Q(s, a_rule)` against threshold `delta`
+- deploy RL action only when margin is strong enough; otherwise deploy baseline action
+
+This behavior is enabled by default through:
+
+- `use_safe_override = True`
+- `safe_override_delta = 8.0`
+
+You can tune or disable it from evaluation/simulation CLI flags:
+
+- `--override-delta <value>`
+- `--disable-safe-override`
+
 ## Main Experience
 
 The easiest way to explore the project is the Streamlit dashboard:
@@ -267,6 +354,8 @@ Typical locations include:
 
 - `outputs/models/q_table.npy`
 - `outputs/logs/`
+- `outputs/logs/training_live_session.csv`
+- `outputs/logs/training_live_steps.csv`
 
 ## Notes
 

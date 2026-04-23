@@ -12,6 +12,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 from config import ProjectConfig
 from src.agent import QLearningAgent
 from src.environment import TsunamiAlertEnvironment
+from src.hybrid_policy import SafeHybridOverride
 
 
 class TsunamiCinematicSimulator:
@@ -41,6 +42,7 @@ class TsunamiCinematicSimulator:
             "saved_animation": str(saved_path),
             "steps": len(episode_data["steps"]),
             "total_reward": episode_data["total_reward"],
+            "override_steps": sum(1 for step in episode_data["steps"] if bool(step.get("overridden", False))),
             "actual_risk_level": episode_data["actual_risk_level"],
             "final_action": episode_data["steps"][-1]["action_text"],
             "alert_correct": episode_data["steps"][-1]["alert_correct"],
@@ -57,6 +59,10 @@ class TsunamiCinematicSimulator:
         correct = sum(1 for trace in traces if bool(trace["steps"][-1]["alert_correct"]))
         false_alert = sum(1 for trace in traces if bool(trace["steps"][-1]["false_alert"]))
         missed = sum(1 for trace in traces if bool(trace["steps"][-1]["missed_alert"]))
+        total_steps = sum(len(trace["steps"]) for trace in traces)
+        total_overrides = sum(
+            1 for trace in traces for step in trace["steps"] if bool(step.get("overridden", False))
+        )
 
         return {
             "saved_animation": str(saved_path),
@@ -65,6 +71,7 @@ class TsunamiCinematicSimulator:
             "correct_alert_rate": round(correct / len(traces), 3),
             "false_alert_rate": round(false_alert / len(traces), 3),
             "missed_alert_rate": round(missed / len(traces), 3),
+            "safe_override_rate": round((total_overrides / total_steps) if total_steps else 0.0, 3),
         }
 
     def _select_showcase_episode(self, max_trials: int) -> dict[str, Any]:
@@ -92,11 +99,35 @@ class TsunamiCinematicSimulator:
 
         while not done:
             current_state = self.environment.index_to_state(state_idx)
-            action = self.agent.choose_action(
-                state_idx=state_idx,
-                training=False,
-                valid_actions=self.environment.get_valid_actions(),
-            )
+            valid_actions = self.environment.get_valid_actions()
+            if bool(self.config.use_safe_override):
+                decision = SafeHybridOverride.select_action(
+                    state_idx=state_idx,
+                    state=current_state,
+                    current_alert_level=int(self.environment.current_alert_level),
+                    valid_actions=valid_actions,
+                    q_table=self.agent.q_table,
+                    delta=float(self.config.safe_override_delta),
+                )
+                action = int(decision.deployed_action)
+                decision_details = {
+                    "rl_action": int(decision.rl_action),
+                    "rule_action": int(decision.rule_action),
+                    "margin": float(decision.margin),
+                    "overridden": bool(decision.used_override),
+                }
+            else:
+                action = self.agent.choose_action(
+                    state_idx=state_idx,
+                    training=False,
+                    valid_actions=valid_actions,
+                )
+                decision_details = {
+                    "rl_action": int(action),
+                    "rule_action": int(action),
+                    "margin": 0.0,
+                    "overridden": False,
+                }
             next_state_idx, reward, done, info = self.environment.step(action)
             next_state = self.environment.index_to_state(next_state_idx)
 
@@ -113,6 +144,7 @@ class TsunamiCinematicSimulator:
                     "alert_correct": bool(info["alert_correct"]),
                     "false_alert": bool(info["false_alert"]),
                     "missed_alert": bool(info["missed_alert"]),
+                    **decision_details,
                 }
             )
             state_idx = next_state_idx

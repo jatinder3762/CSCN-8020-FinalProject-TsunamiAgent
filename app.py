@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -18,5 +19,28 @@ def main() -> None:
     TsunamiDashboardApp().run()
 
 
+def _is_running_via_streamlit() -> bool:
+    """Detects whether the script is executing inside Streamlit's runtime."""
+    from streamlit.runtime.scriptrunner import get_script_run_ctx
+
+    return get_script_run_ctx(suppress_warning=True) is not None
+
+
+def _launch_streamlit() -> int:
+    """Re-invokes this script through Streamlit when launched with plain Python."""
+    command = [
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        str(Path(__file__).resolve()),
+        *sys.argv[1:],
+    ]
+    return subprocess.run(command, check=False).returncode
+
+
 if __name__ == "__main__":
-    main()
+    if _is_running_via_streamlit():
+        main()
+    else:
+        raise SystemExit(_launch_streamlit())

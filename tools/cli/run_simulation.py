@@ -33,6 +33,17 @@ class SimulationRunner:
         parser.add_argument("--fps", type=int, default=20, help="Animation frames per second.")
         parser.add_argument("--frames-per-step", type=int, default=45, help="Animation frames used per decision step.")
         parser.add_argument(
+            "--disable-safe-override",
+            action="store_true",
+            help="Disable safe hybrid override and deploy pure greedy RL actions.",
+        )
+        parser.add_argument(
+            "--override-delta",
+            type=float,
+            default=None,
+            help="Override margin threshold delta used by safe hybrid deployment.",
+        )
+        parser.add_argument(
             "--output",
             type=str,
             default="",
@@ -52,6 +63,10 @@ class SimulationRunner:
         args = self.parser.parse_args()
         runtime = RuntimeFactory.build_evaluation_bundle(evaluation_episodes=1, seed=args.seed)
         config = runtime.config
+        if bool(args.disable_safe_override):
+            config.use_safe_override = False
+        if args.override_delta is not None:
+            config.safe_override_delta = float(args.override_delta)
 
         model_path = Path(args.model_path).resolve() if args.model_path else (config.models_dir / "q_table.npy")
         if not model_path.exists():

@@ -373,18 +373,18 @@ class TsunamiDashboardApp:
         bottom_row = st.sidebar.columns(2)
 
         with top_row[0]:
-            previous_clicked = st.button("Previous", key="floating_previous", use_container_width=True)
+            previous_clicked = st.button("Previous", key="floating_previous", width="stretch")
         with top_row[1]:
-            next_clicked = st.button("Next", key="floating_next", use_container_width=True)
+            next_clicked = st.button("Next", key="floating_next", width="stretch")
         with bottom_row[0]:
             auto_run_clicked = st.button(
                 "Auto Run",
                 key="floating_auto_run",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
             )
         with bottom_row[1]:
-            reset_clicked = st.button("Reset", key="floating_reset", use_container_width=True)
+            reset_clicked = st.button("Reset", key="floating_reset", width="stretch")
 
         if previous_clicked:
             controller.previous_step()
@@ -486,7 +486,7 @@ class TsunamiDashboardApp:
 
         cfg = ProjectConfig(training_episodes=controls["train_episodes"], random_seed=controls["seed"])
         st.caption("Section 1/3: Live Training Monitor")
-        run_training = st.button("Start Live Training", use_container_width=True, type="primary")
+        run_training = st.button("Start Live Training", width="stretch", type="primary")
 
         progress = st.progress(0)
         status = st.empty()
@@ -500,6 +500,7 @@ class TsunamiDashboardApp:
         log_slot = st.empty()
 
         records: list[dict[str, Any]] = []
+        step_records: list[dict[str, Any]] = []
         action_counts: dict[str, int] = {name: 0 for name in cfg.action_names.values()}
 
         if not run_training:
@@ -531,9 +532,12 @@ class TsunamiDashboardApp:
         refresh = max(10, cfg.training_episodes // 60)
 
         for episode in range(1, cfg.training_episodes + 1):
-            result = self._run_training_episode(env, agent, cfg)
+            result, episode_steps = self._run_training_episode(env, agent, cfg)
             result["episode"] = episode
             records.append(result)
+            for step_record in episode_steps:
+                step_record["episode"] = episode
+            step_records.extend(episode_steps)
             final_action = str(result.get("final_action", "Unknown"))
             action_counts[final_action] = action_counts.get(final_action, 0) + 1
             agent.decay_epsilon()
@@ -567,11 +571,14 @@ class TsunamiDashboardApp:
             "missed_alert_rate": round(float(frame["missed"].mean()), 3),
             "final_epsilon": round(float(agent.epsilon), 4),
             "model_path": str(cfg.models_dir / "q_table.npy"),
+            "live_episode_summary_path": str(cfg.logs_dir / "training_live_session.csv"),
+            "live_step_trace_path": str(cfg.logs_dir / "training_live_steps.csv"),
         }
 
         cfg.logs_dir.mkdir(parents=True, exist_ok=True)
         cfg.models_dir.mkdir(parents=True, exist_ok=True)
         frame.to_csv(cfg.logs_dir / "training_live_session.csv", index=False)
+        pd.DataFrame(step_records).to_csv(cfg.logs_dir / "training_live_steps.csv", index=False)
         agent.save_q_table(cfg.models_dir / "q_table.npy")
 
         st.success("Training completed. Updated model and training log were saved.")
@@ -628,7 +635,7 @@ class TsunamiDashboardApp:
                 "Decision Quality (Overall Avg)": average_quality,
             }
         ).set_index("Episode")
-        quality_slot.area_chart(quality_frame, use_container_width=True)
+        quality_slot.area_chart(quality_frame, width="stretch")
 
         safety_frame = pd.DataFrame(
             {
@@ -639,7 +646,7 @@ class TsunamiDashboardApp:
                 "Missed %": frame["missed"].expanding().mean() * 100.0,
             }
         ).set_index("Episode")
-        safety_slot.area_chart(safety_frame, use_container_width=True)
+        safety_slot.area_chart(safety_frame, width="stretch")
 
         action_frame = pd.DataFrame(
             {
@@ -647,7 +654,7 @@ class TsunamiDashboardApp:
                 "Count": list(action_counts.values()),
             }
         ).set_index("Action")
-        action_slot.bar_chart(action_frame, use_container_width=True)
+        action_slot.bar_chart(action_frame, width="stretch")
 
         log_caption.markdown("#### Latest Episode Outcomes")
         recent_frame = frame[["episode", "total_reward", "steps", "final_action", "correct", "false", "missed"]].tail(10)
@@ -666,40 +673,107 @@ class TsunamiDashboardApp:
         recent_frame["False Alarm"] = recent_frame["False Alarm"].map(lambda value: "Yes" if bool(value) else "No")
         recent_frame["Missed"] = recent_frame["Missed"].map(lambda value: "Yes" if bool(value) else "No")
         recent_frame["Score"] = recent_frame["Score"].map(lambda value: f"{float(value):+.1f}")
-        log_slot.dataframe(recent_frame, use_container_width=True, hide_index=True, height=250)
+        log_slot.dataframe(recent_frame, width="stretch", hide_index=True, height=250)
 
     def _run_training_episode(
         self,
         env: TsunamiAlertEnvironment,
         agent: QLearningAgent,
         cfg: ProjectConfig,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         """Runs one Q-learning training episode for the live dashboard."""
         state_idx = env.reset()
         done = False
         total_reward = 0.0
         steps = 0
         info: dict[str, Any] = {}
+        trace: list[dict[str, Any]] = []
 
         while not done and steps < cfg.max_steps_per_episode:
+            state_tuple = env.index_to_state(state_idx)
             action = agent.choose_action(
                 state_idx,
                 training=True,
                 valid_actions=env.get_valid_actions(),
             )
             next_state_idx, reward, done, info = env.step(action)
+            next_state_tuple = env.index_to_state(next_state_idx)
             agent.update(state_idx, action, reward, next_state_idx, done)
-            state_idx = next_state_idx
             steps += 1
+            trace.append(
+                self._build_live_training_step_record(
+                    step=steps,
+                    state_idx=state_idx,
+                    state_tuple=state_tuple,
+                    action=action,
+                    reward=reward,
+                    next_state_idx=next_state_idx,
+                    next_state_tuple=next_state_tuple,
+                    info=info,
+                    cfg=cfg,
+                    done=done,
+                )
+            )
+            state_idx = next_state_idx
             total_reward += reward
 
+        return (
+            {
+                "total_reward": float(total_reward),
+                "steps": int(steps),
+                "final_action": str(info.get("action_meaning", "Unknown")),
+                "correct": bool(info.get("alert_correct", False)),
+                "false": bool(info.get("false_alert", False)),
+                "missed": bool(info.get("missed_alert", False)),
+            },
+            trace,
+        )
+
+    @staticmethod
+    def _build_live_training_step_record(
+        step: int,
+        state_idx: int,
+        state_tuple: tuple[int, int, int, int, int],
+        action: int,
+        reward: float,
+        next_state_idx: int,
+        next_state_tuple: tuple[int, int, int, int, int],
+        info: dict[str, Any],
+        cfg: ProjectConfig,
+        done: bool,
+    ) -> dict[str, Any]:
+        """Builds one detailed live-training step record for CSV export."""
+        reward_terms = info.get("reward_terms", {})
         return {
-            "total_reward": float(total_reward),
-            "steps": int(steps),
-            "final_action": str(info.get("action_meaning", "Unknown")),
-            "correct": bool(info.get("alert_correct", False)),
-            "false": bool(info.get("false_alert", False)),
-            "missed": bool(info.get("missed_alert", False)),
+            "step": int(step),
+            "state_index": int(state_idx),
+            "magnitude": cfg.magnitude_levels[state_tuple[0]],
+            "depth": cfg.depth_levels[state_tuple[1]],
+            "wave_risk": cfg.wave_risk_levels[state_tuple[2]],
+            "confidence": cfg.confidence_levels[state_tuple[3]],
+            "time": cfg.time_levels[state_tuple[4]],
+            "action_id": int(action),
+            "action_text": cfg.action_names.get(action, f"Unknown({action})"),
+            "reward": float(reward),
+            "next_state_index": int(next_state_idx),
+            "next_magnitude": cfg.magnitude_levels[next_state_tuple[0]],
+            "next_depth": cfg.depth_levels[next_state_tuple[1]],
+            "next_wave_risk": cfg.wave_risk_levels[next_state_tuple[2]],
+            "next_confidence": cfg.confidence_levels[next_state_tuple[3]],
+            "next_time": cfg.time_levels[next_state_tuple[4]],
+            "actual_risk_level": str(info.get("actual_risk_level", "Unknown")),
+            "current_alert_level": str(info.get("current_alert_level", "Unknown")),
+            "alert_correct": bool(info.get("alert_correct", False)),
+            "false_alert": bool(info.get("false_alert", False)),
+            "missed_alert": bool(info.get("missed_alert", False)),
+            "done": bool(done),
+            "reward_term_base": float(reward_terms.get("r_base", 0.0)),
+            "reward_term_invalid": float(reward_terms.get("r_invalid", 0.0)),
+            "reward_term_churn": float(reward_terms.get("r_churn", 0.0)),
+            "reward_term_evidence": float(reward_terms.get("r_evidence", 0.0)),
+            "reward_term_overreact": float(reward_terms.get("r_overreact", 0.0)),
+            "reward_term_cancel": float(reward_terms.get("r_cancel", 0.0)),
+            "reward_term_terminal": float(reward_terms.get("r_terminal", 0.0)),
         }
 
     def _render_training_data_preview(self, cfg: ProjectConfig) -> None:
@@ -720,21 +794,21 @@ class TsunamiDashboardApp:
             st.markdown("#### State Space Sample")
             st.dataframe(
                 self._build_training_state_preview(cfg),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
         with preview_right:
             st.markdown("#### Action Mapping")
             st.dataframe(
                 self._build_action_preview(cfg),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
         q_table_preview = self._build_q_table_preview(cfg)
         if q_table_preview is not None:
             st.markdown("#### Saved Q-Table Preview")
-            st.dataframe(q_table_preview, use_container_width=True, hide_index=True)
+            st.dataframe(q_table_preview, width="stretch", hide_index=True)
 
     def _build_training_state_preview(self, cfg: ProjectConfig, limit: int = 12) -> pd.DataFrame:
         """Builds a small preview of the generated state combinations used for training."""

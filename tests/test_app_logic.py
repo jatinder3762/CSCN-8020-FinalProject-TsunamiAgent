@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import unittest
 
+from config import ProjectConfig
+from src.core import RuntimeFactory
 from src.presentation import TsunamiDashboardApp
 from src.presentation.controller import DashboardController
 from src.presentation.scenarios import ScenarioGenerator
@@ -111,6 +113,19 @@ class TestPresentationImports(unittest.TestCase):
         """The package root should expose the main Streamlit dashboard app."""
         app = TsunamiDashboardApp()
         self.assertEqual(app.title, "Tsunami RL Decision Dashboard")
+
+    def test_live_training_episode_returns_step_trace(self) -> None:
+        """Live training should expose per-step records for audit and explanation."""
+        app = TsunamiDashboardApp()
+        runtime = RuntimeFactory.build_training_bundle(training_episodes=2, seed=7)
+        result, trace = app._run_training_episode(runtime.environment, runtime.agent, ProjectConfig(training_episodes=2, random_seed=7))
+
+        self.assertEqual(int(result["steps"]), len(trace))
+        self.assertGreater(len(trace), 0)
+        self.assertIn("step", trace[0])
+        self.assertIn("time", trace[0])
+        self.assertIn("next_time", trace[0])
+        self.assertIn("reward_term_terminal", trace[0])
 
 
 if __name__ == "__main__":

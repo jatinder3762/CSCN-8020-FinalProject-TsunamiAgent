@@ -535,16 +535,16 @@ class DashboardComponents:
                 st.latex(
                     r"Q(s_t,a_t)\leftarrow Q(s_t,a_t)+\alpha\left[r_t+\gamma\max_{a'}Q(s_{t+1},a')-Q(s_t,a_t)\right]"
                 )
-                st.dataframe(mdp_inputs, use_container_width=True, hide_index=True)
-                st.dataframe(reward_inputs, use_container_width=True, hide_index=True)
+                st.dataframe(mdp_inputs, width="stretch", hide_index=True)
+                st.dataframe(reward_inputs, width="stretch", hide_index=True)
         else:
             st.latex(r"\mathcal{M} = (\mathcal{S}, \mathcal{A}, P, R, \gamma)")
             st.latex(
                 r"Q(s_t,a_t)\leftarrow Q(s_t,a_t)+\alpha\left[r_t+\gamma\max_{a'}Q(s_{t+1},a')-Q(s_t,a_t)\right]"
             )
-            st.dataframe(mdp_inputs, use_container_width=True, hide_index=True)
+            st.dataframe(mdp_inputs, width="stretch", hide_index=True)
             with st.expander("Reward Inputs Used By R(s, a, s')"):
-                st.dataframe(reward_inputs, use_container_width=True, hide_index=True)
+                st.dataframe(reward_inputs, width="stretch", hide_index=True)
 
     @staticmethod
     def _action_display_label(action: str) -> str:
@@ -791,13 +791,13 @@ class DashboardComponents:
                 f"alpha = {config.alpha:.3f}, gamma = {config.gamma:.3f}, step = {current_step + 1}/{trace.step_count}"
             )
             st.markdown("#### Symbol Legend (Symbol + Text)")
-            st.dataframe(symbol_legend_df, use_container_width=True, hide_index=True)
+            st.dataframe(symbol_legend_df, width="stretch", hide_index=True)
             st.markdown("#### State-to-Index Mapping")
-            st.dataframe(factor_df, use_container_width=True, hide_index=True)
+            st.dataframe(factor_df, width="stretch", hide_index=True)
             st.markdown("#### Numeric RL Substitution")
-            st.dataframe(step_math_df, use_container_width=True, hide_index=True)
+            st.dataframe(step_math_df, width="stretch", hide_index=True)
             st.markdown("#### Reward Terms Used at This Step")
-            st.dataframe(reward_df, use_container_width=True, hide_index=True)
+            st.dataframe(reward_df, width="stretch", hide_index=True)
 
     @staticmethod
     def render_history_table(
@@ -812,7 +812,7 @@ class DashboardComponents:
         if max_rows is not None and len(rows) > max_rows:
             rows = rows[-max_rows:]
         frame = pd.DataFrame(rows)
-        st.dataframe(frame, use_container_width=True, hide_index=True, height=height)
+        st.dataframe(frame, width="stretch", hide_index=True, height=height)
 
     @staticmethod
     def render_progress_indicator(trace: EpisodeTrace, current_step: int) -> None:

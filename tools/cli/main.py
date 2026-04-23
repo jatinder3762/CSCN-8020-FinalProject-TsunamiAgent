@@ -37,6 +37,17 @@ class Application:
         parser.add_argument("--train-episodes", type=int, default=2500, help="Training episodes.")
         parser.add_argument("--eval-episodes", type=int, default=400, help="Evaluation episodes.")
         parser.add_argument("--seed", type=int, default=42, help="Random seed.")
+        parser.add_argument(
+            "--disable-safe-override",
+            action="store_true",
+            help="Disable safe hybrid override during evaluation.",
+        )
+        parser.add_argument(
+            "--override-delta",
+            type=float,
+            default=None,
+            help="Safe hybrid override margin threshold delta for evaluation.",
+        )
         return parser
 
     def run(self) -> None:
@@ -51,13 +62,23 @@ class Application:
             return
 
         if args.mode == "evaluate":
-            summary = self._run_evaluation(args.eval_episodes, args.seed)
+            summary = self._run_evaluation(
+                args.eval_episodes,
+                args.seed,
+                disable_safe_override=bool(args.disable_safe_override),
+                override_delta=args.override_delta,
+            )
             print("Evaluation completed.")
             print(json.dumps(summary, indent=2))
             return
 
         training_summary = self._run_training(args.train_episodes, args.seed)
-        evaluation_summary = self._run_evaluation(args.eval_episodes, args.seed)
+        evaluation_summary = self._run_evaluation(
+            args.eval_episodes,
+            args.seed,
+            disable_safe_override=bool(args.disable_safe_override),
+            override_delta=args.override_delta,
+        )
 
         print("Training + Evaluation completed.")
         print("Training summary:")
@@ -71,9 +92,19 @@ class Application:
         trainer = Trainer(config=runtime.config, environment=runtime.environment, agent=runtime.agent)
         return trainer.train()
 
-    def _run_evaluation(self, eval_episodes: int, seed: int) -> dict:
+    def _run_evaluation(
+        self,
+        eval_episodes: int,
+        seed: int,
+        disable_safe_override: bool = False,
+        override_delta: float | None = None,
+    ) -> dict:
         """Runs evaluation using saved model weights."""
         runtime = RuntimeFactory.build_evaluation_bundle(evaluation_episodes=eval_episodes, seed=seed)
+        if bool(disable_safe_override):
+            runtime.config.use_safe_override = False
+        if override_delta is not None:
+            runtime.config.safe_override_delta = float(override_delta)
         runtime.agent.load_q_table(runtime.config.models_dir / "q_table.npy")
         evaluator = Evaluator(config=runtime.config, environment=runtime.environment, agent=runtime.agent)
         return evaluator.evaluate(episodes=eval_episodes)
